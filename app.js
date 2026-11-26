@@ -125,12 +125,49 @@ const PRESETS = [
   },
 ];
 
-const DEFAULT_STATE = {
-  ...PRESETS[0],
-  presetName: PRESETS[0].name,
-  interactive: true,
-  showDot: false,
-};
+const RANDOM_PALETTES = [
+  ['#f7f5ef', '#06060b', '#8b5cf6'],
+  ['#ffd166', '#0e0714', '#ef476f'],
+  ['#64ffda', '#04121c', '#00b4d8'],
+  ['#ff99c8', '#0c0612', '#c77dff'],
+  ['#d9ff4d', '#080b07', '#4ade80'],
+  ['#e2f1ff', '#050816', '#38bdf8'],
+  ['#ff7b54', '#120608', '#ffb26b'],
+  ['#f3e8ff', '#0c0519', '#d946ef'],
+  ['#ffe5ec', '#0d040a', '#fb7185'],
+  ['#fef08a', '#090910', '#f59e0b'],
+  ['#bae6fd', '#040a14', '#6366f1'],
+  ['#ffffff', '#07070c', '#38bdf8'],
+];
+
+function generateRandomConfig() {
+  const palette = RANDOM_PALETTES[Math.floor(Math.random() * RANDOM_PALETTES.length)];
+  const mode = Math.floor(Math.random() * 5);
+  const arms = [3, 4, 5, 6, 7, 8, 10, 12][Math.floor(Math.random() * 8)];
+  const iridescent = Math.random() > 0.72;
+
+  return {
+    id: null,
+    presetName: 'Random',
+    mode,
+    arms,
+    tightness: Number((2.2 + Math.random() * 5.8).toFixed(1)),
+    balance: Number((0.42 + Math.random() * 0.16).toFixed(2)),
+    speed: Number((1.0 + Math.random() * 1.15).toFixed(2)),
+    direction: Math.random() > 0.28 ? 1 : -1,
+    pulse: Number((Math.random() * 0.4).toFixed(2)),
+    warp: Number((mode === 4 ? 0.25 + Math.random() * 0.45 : Math.random() * 0.28).toFixed(2)),
+    softness: Number((0.04 + Math.random() * 0.3).toFixed(2)),
+    chroma: Number((0.15 + Math.random() * 0.48).toFixed(2)),
+    iridescence: iridescent ? Number((0.45 + Math.random() * 0.5).toFixed(2)) : 0,
+    depth: Number((0.42 + Math.random() * 0.34).toFixed(2)),
+    colorA: palette[0],
+    colorB: palette[1],
+    colorGlow: palette[2],
+    interactive: true,
+    showDot: false,
+  };
+}
 
 const ILLUSION_DURATION_SEC = 20;
 const RING_CIRCUMFERENCE = 2 * Math.PI * 52;
@@ -175,13 +212,20 @@ function parseHexParam(val, fallback) {
 function loadInitialState() {
   const params = new URLSearchParams(window.location.search);
   const presetId = params.get('preset');
-  const basePreset = PRESETS.find((p) => p.id === presetId) || PRESETS[0];
+  const matchedPreset = PRESETS.find((p) => p.id === presetId);
 
-  const state = {
-    ...DEFAULT_STATE,
-    ...basePreset,
-    presetName: basePreset.name,
-  };
+  const spiralParamKeys = ['m', 'a', 't', 'b', 's', 'd', 'p', 'w', 'sf', 'ch', 'ir', 'dp', 'ca', 'cb', 'cg'];
+  const hasExplicitConfig = Boolean(matchedPreset) || spiralParamKeys.some((k) => params.has(k));
+
+  // Generate a fresh random spiral every time the link is opened without explicit params
+  const state = hasExplicitConfig
+    ? {
+        ...(matchedPreset || PRESETS[0]),
+        presetName: matchedPreset ? matchedPreset.name : 'Custom',
+        interactive: true,
+        showDot: false,
+      }
+    : generateRandomConfig();
 
   if (!params.has('s') && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
     state.speed = 0.45;
@@ -231,7 +275,7 @@ function loadInitialState() {
   if (params.get('dot') === '1') state.showDot = true;
   if (params.get('int') === '0') state.interactive = false;
 
-  if (customized && !presetId) {
+  if (customized && !matchedPreset) {
     state.presetName = 'Custom';
   }
 
@@ -471,40 +515,12 @@ function setPlaying(playing) {
 }
 
 // ===== Randomize Generator =====
-const RANDOM_PALETTES = [
-  ['#f7f5ef', '#06060b', '#a78bfa'],
-  ['#ffd166', '#0e0714', '#ef476f'],
-  ['#64ffda', '#04121c', '#00b4d8'],
-  ['#ff99c8', '#0c0612', '#c77dff'],
-  ['#d9ff4d', '#080b07', '#4ade80'],
-  ['#e2f1ff', '#050816', '#38bdf8'],
-  ['#ff7b54', '#120608', '#ffb26b'],
-  ['#f3e8ff', '#0c0519', '#d946ef'],
-];
-
 function randomizeSpiral() {
-  const palette = RANDOM_PALETTES[Math.floor(Math.random() * RANDOM_PALETTES.length)];
-  const mode = Math.floor(Math.random() * 5);
-  const arms = [3, 4, 5, 6, 7, 8, 10, 12][Math.floor(Math.random() * 8)];
-
+  const next = generateRandomConfig();
   Object.assign(targetState, {
-    id: null,
-    presetName: 'Random',
-    mode,
-    arms,
-    tightness: Number((2.2 + Math.random() * 5.8).toFixed(1)),
-    balance: Number((0.42 + Math.random() * 0.16).toFixed(2)),
-    speed: Number((0.95 + Math.random() * 1.15).toFixed(2)),
-    direction: Math.random() > 0.25 ? 1 : -1,
-    pulse: Number((Math.random() * 0.42).toFixed(2)),
-    warp: Number((mode === 4 ? 0.25 + Math.random() * 0.45 : Math.random() * 0.3).toFixed(2)),
-    softness: Number((0.04 + Math.random() * 0.32).toFixed(2)),
-    chroma: Number((0.15 + Math.random() * 0.5).toFixed(2)),
-    iridescence: Math.random() > 0.72 ? Number((0.45 + Math.random() * 0.5).toFixed(2)) : 0,
-    depth: Number((0.42 + Math.random() * 0.36).toFixed(2)),
-    colorA: palette[0],
-    colorB: palette[1],
-    colorGlow: palette[2],
+    ...next,
+    interactive: targetState.interactive,
+    showDot: targetState.showDot,
   });
 
   syncUIFromState();
@@ -560,7 +576,7 @@ function updateIllusion(now) {
   els.illusionCountdown.textContent = String(remaining);
 
   if (remaining <= 5 && remaining > 0) {
-    els.illusionHint.textContent = 'Almost done — stay locked on the dot';
+    els.illusionHint.textContent = 'Almost done, stay locked on the dot';
   } else if (remaining <= 12) {
     els.illusionHint.textContent = 'Stay relaxed and keep staring at the center';
   }
