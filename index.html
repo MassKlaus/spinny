@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Spinny — Hypnotic Spiral</title>
+  <meta name="description" content="A real-time interactive hypnotic spiral and optical aftereffect illusion." />
+  <meta name="theme-color" content="#050508" />
+  <meta property="og:title" content="Spinny — Stare at the center for 20 seconds" />
+  <meta property="og:description" content="Interactive hypnotic optical illusion and customizable spiral." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23050508'/%3E%3Cpath d='M32 32c0-2.5 2.5-4.5 5-4.5 4.5 0 7.5 4 7.5 8.5 0 6.5-5.5 11.5-12.5 11.5-9 0-16-7.5-16-16.5C16 20 23.5 12 34 12c12 0 21 9.5 21 21.5' fill='none' stroke='%23f4f2ec' stroke-width='3.5' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body class="hud-hidden dot-hidden">
+  <!-- Full-viewport GPU Canvas -->
+  <canvas id="spiral-canvas" aria-label="Interactive hypnotic spiral"></canvas>
+
+  <!-- Center Fixation & Optical Aftereffect Ring (hidden unless dot enabled or 20s Trick active) -->
+  <div id="fixation-layer" class="fixation-layer" aria-hidden="true">
+    <svg class="countdown-ring" viewBox="0 0 120 120">
+      <circle class="ring-track" cx="60" cy="60" r="52" />
+      <circle class="ring-progress" id="ring-progress" cx="60" cy="60" r="52" />
+    </svg>
+    <div id="fixation-dot" class="fixation-dot"></div>
+    <div id="illusion-prompt" class="illusion-prompt">
+      <span id="illusion-countdown" class="illusion-countdown">20</span>
+      <span id="illusion-hint" class="illusion-hint">Keep your eyes on the center</span>
+    </div>
+  </div>
+
+  <!-- Post-Stare Optical Aftereffect Reveal Screen -->
+  <div id="aftereffect-screen" class="aftereffect-screen" hidden>
+    <div class="aftereffect-card">
+      <div class="aftereffect-pattern" aria-hidden="true">
+        <div class="grid-ring r1"></div>
+        <div class="grid-ring r2"></div>
+        <div class="grid-ring r3"></div>
+        <div class="grid-crosshair"></div>
+      </div>
+      <h1 class="aftereffect-title">Look at the back of your hand<br />or stare right here.</h1>
+      <p class="aftereffect-sub">Stationary surfaces should appear to breathe, swell, and drift in reverse for a few seconds.</p>
+      <div class="aftereffect-actions">
+        <button type="button" id="btn-back-to-spiral" class="btn-primary">Back to spiral</button>
+        <button type="button" id="btn-retry-illusion" class="btn-ghost">Run 20s again</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Bottom Control Dock (appears only after clicking/tapping) -->
+  <nav id="hud-dock" class="hud-dock" aria-label="Controls">
+    <button type="button" id="btn-play" class="dock-btn" title="Play / Pause (Space)" aria-label="Play or pause">
+      <svg id="icon-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <rect x="6" y="4" width="4" height="16" rx="1"></rect>
+        <rect x="14" y="4" width="4" height="16" rx="1"></rect>
+      </svg>
+      <svg id="icon-play" viewBox="0 0 24 24" fill="currentColor" hidden>
+        <path d="M8 5.14v13.72a1 1 0 0 0 1.5.86l11-6.86a1 1 0 0 0 0-1.72l-11-6.86a1 1 0 0 0-1.5.86z"></path>
+      </svg>
+    </button>
+
+    <button type="button" id="btn-illusion" class="dock-btn dock-btn-featured" title="Start 20-second Optical Illusion (I)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"></path>
+        <circle cx="12" cy="12" r="3"></circle>
+      </svg>
+      <span id="btn-illusion-label">20s Trick</span>
+    </button>
+
+    <div class="dock-sep"></div>
+
+    <button type="button" id="btn-randomize" class="dock-btn" title="Randomize (R)" aria-label="Randomize spiral">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22"></path>
+        <path d="m18 2 4 4-4 4"></path>
+        <path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"></path>
+        <path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8"></path>
+        <path d="m18 14 4 4-4 4"></path>
+      </svg>
+    </button>
+
+    <button type="button" id="btn-audio" class="dock-btn" title="Toggle Audio (M)" aria-label="Toggle hypnotic audio" aria-pressed="false">
+      <svg id="icon-sound-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 5 6 9H2v6h4l5 4V5Z"></path>
+        <line x1="22" y1="9" x2="16" y2="15"></line>
+        <line x1="16" y1="9" x2="22" y2="15"></line>
+      </svg>
+      <svg id="icon-sound-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" hidden>
+        <path d="M11 5 6 9H2v6h4l5 4V5Z"></path>
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+      </svg>
+    </button>
+
+    <button type="button" id="btn-share" class="dock-btn" title="Copy Share Link" aria-label="Copy shareable link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+      </svg>
+      <span class="dock-label">Share</span>
+    </button>
+
+    <button type="button" id="btn-fullscreen" class="dock-btn" title="Fullscreen (F)" aria-label="Toggle fullscreen">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 3H5a2 2 0 0 0-2 2v3"></path>
+        <path d="M21 8V5a2 2 0 0 0-2-2h-3"></path>
+        <path d="M3 16v3a2 2 0 0 0 2 2h3"></path>
+        <path d="M16 21h3a2 2 0 0 0 2-2v-3"></path>
+      </svg>
+    </button>
+
+    <div class="dock-sep"></div>
+
+    <button type="button" id="btn-toggle-drawer" class="dock-btn dock-btn-tune" title="Studio Controls (C)" aria-expanded="false" aria-controls="config-drawer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="4" y1="21" x2="4" y2="14"></line>
+        <line x1="4" y1="10" x2="4" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="12"></line>
+        <line x1="12" y1="8" x2="12" y2="3"></line>
+        <line x1="20" y1="21" x2="20" y2="16"></line>
+        <line x1="20" y1="12" x2="20" y2="3"></line>
+        <line x1="1" y1="14" x2="7" y2="14"></line>
+        <line x1="9" y1="8" x2="15" y2="8"></line>
+        <line x1="17" y1="16" x2="23" y2="16"></line>
+      </svg>
+      <span class="dock-label">Studio</span>
+    </button>
+  </nav>
+
+  <!-- Slide-Over Studio Configurator Drawer -->
+  <aside id="config-drawer" class="config-drawer" aria-label="Studio controls" aria-hidden="true">
+    <div class="drawer-header">
+      <h2 class="drawer-title">Studio</h2>
+      <div class="drawer-header-actions">
+        <button type="button" id="btn-reset" class="icon-btn" title="Reset to default">Reset</button>
+        <button type="button" id="btn-close-drawer" class="icon-btn icon-btn-close" aria-label="Close studio">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="drawer-body">
+      <!-- Presets -->
+      <section class="control-section">
+        <h3 class="section-title">Presets</h3>
+        <div id="preset-grid" class="preset-grid"></div>
+      </section>
+
+      <!-- Geometry -->
+      <section class="control-section">
+        <h3 class="section-title">Geometry</h3>
+
+        <div class="field">
+          <label class="field-label">Pattern</label>
+          <div class="segmented-grid" id="mode-selector" role="radiogroup" aria-label="Spiral pattern">
+            <button type="button" class="seg-btn" data-mode="0">Logarithmic</button>
+            <button type="button" class="seg-btn" data-mode="1">Archimedean</button>
+            <button type="button" class="seg-btn" data-mode="2">Tunnel</button>
+            <button type="button" class="seg-btn" data-mode="3">Counter-Spin</button>
+            <button type="button" class="seg-btn" data-mode="4">Ripple</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-row">
+            <label class="field-label" for="ctrl-arms">Arms</label>
+            <span class="field-value" id="val-arms">6</span>
+          </div>
+          <input type="range" id="ctrl-arms" min="1" max="24" step="1" value="6" />
+        </div>
+
+        <div class="field">
+          <div class="field-row">
+            <label class="field-label" for="ctrl-tightness">Twist</label>
+            <span class="field-value" id="val-tightness">4.6</span>
+          </div>
+          <input type="range" id="ctrl-tightness" min="0.5" max="14" step="0.1" value="4.6" />
+        </div>
+
+        <div class="field">
+          <div class="field-row">
+            <label class="field-label" for="ctrl-balance">Stripe balance</label>
+            <span class="field-value" id="val-balance">50%</span>
+          </div>
+          <input type="range" id="ctrl-balance" min="0.15" max="0.85" step="0.01" value="0.5" />
+        </div>
+      </section>
+
+      <!-- Motion -->
+      <section class="control-section">
+        <h3 class="section-title">Motion</h3>
+
+        <div class="field">
+          <div class="field-row">
+            <label class="field-label" for="ctrl-speed">Speed</label>
+            <span class="field-value" id="val-speed">1.45×</span>
+          </div>
+          <input type="range" id="ctrl-speed" min="0" max="4.5" step="0.05" value="1.45" />
+        </div>
+
+        <div class="field-inline-toggle">
+          <span class="field-label">Direction</span>
+          <div class="segmented-inline">
+            <button type="button" class="seg-btn" id="dir-inward" data-dir="1">Pull in</button>
+            <button type="button" class="seg-btn" id="dir-outward" data-dir="-1">Expand out</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-row">
+            <label class="field-label" for="ctrl-pulse">Breathing pulse</label>
+            <span class="field-value" id="val-pulse">0.14</span>
+          </div>
+          <input type="range" id="ctrl-pulse" min="0" max="1" step="0.02" value="0.14" />
+        </div>
+
+        <div class="field">
+          <div class="field-row">
+            <label class="field-label" for="ctrl-warp">Warp</label>
+            <span class="field-value" id="val-warp">0.04</span>
+          </div>
+          <input type="range" id="ctrl-warp" min="0" max="1" step="0.02" value="0.04" />
+        </div>
+      </section>
+
+      <!-- Color & Optics -->
+      <section class="control-section">
+        <h3 class="section-title">Color &amp; optics</h3>
+
+        <div class="color-row">
+          <label class="color-swatch">
+            <input type="color" id="ctrl-color-a" value="#f5f3ed" />
+            <span class="swatch-meta">
+              <span class="swatch-label">Primary</span>
+              <span class="swatch-hex" id="hex-color-a">#F5F3ED</span>
+            </span>
+          </label>
+          <label class="color-swatch">
+            <input type="color" id="ctrl-color-b" value="#06060b" />
+            <span class="swatch-meta">
+              <span class="swatch-label">Background</span>
+              <span class="swatch-hex" id="hex-color-b">#06060B</span>
+            </span>
+          </label>
+          <label class="color-swatch">
+            <input type="color" id="ctrl-color-glow" value="#8b5cf6" />
+            <span class="swatch-meta">
+              <span class="swatch-label">Glow</span>
+              <span class="swatch-hex" id="hex-color-glow">#8B5CF6</span>
+            </span>
+          </label>
+        </div>
+
+        <div class="field">
+          <div class="field-row">
+            <label class="field-label" for="ctrl-softness">Edge softness</label>
+            <span class="field-value" id="val-softness">0.08</span>
+          </div>
+          <input type="range" id="ctrl-softness" min="0" max="1" step="0.02" value="0.08" />
+        </div>
+
+        <div class="field">
+          <div class="field-row">
+            <label class="field-label" for="ctrl-chroma">Chromatic edge</label>
+            <span class="field-value" id="val-chroma">0.26</span>
+          </div>
+          <input type="range" id="ctrl-chroma" min="0" max="1" step="0.02" value="0.26" />
+        </div>
+
+        <div class="field">
+          <div class="field-row">
+            <label class="field-label" for="ctrl-iridescence">Color shift</label>
+            <span class="field-value" id="val-iridescence">0.00</span>
+          </div>
+          <input type="range" id="ctrl-iridescence" min="0" max="1" step="0.02" value="0" />
+        </div>
+
+        <div class="field">
+          <div class="field-row">
+            <label class="field-label" for="ctrl-depth">Depth shading</label>
+            <span class="field-value" id="val-depth">0.52</span>
+          </div>
+          <input type="range" id="ctrl-depth" min="0" max="1" step="0.02" value="0.52" />
+        </div>
+      </section>
+
+      <!-- Interaction & Sharing -->
+      <section class="control-section">
+        <h3 class="section-title">Interaction &amp; sharing</h3>
+
+        <label class="switch-row">
+          <span>
+            <span class="switch-title">Touch &amp; cursor pull</span>
+            <span class="switch-desc">Drag across the screen to bend the spiral</span>
+          </span>
+          <input type="checkbox" id="ctrl-interactive" checked />
+        </label>
+
+        <label class="switch-row">
+          <span>
+            <span class="switch-title">Center dot</span>
+            <span class="switch-desc">Show a fixed point in the middle</span>
+          </span>
+          <input type="checkbox" id="ctrl-dot" />
+        </label>
+
+        <div class="share-box">
+          <button type="button" id="btn-copy-link" class="btn-primary btn-full">Copy share link</button>
+          <button type="button" id="btn-copy-trick-link" class="btn-ghost btn-full">Copy 20s trick link</button>
+          <p class="share-hint">Saves your exact settings in the URL. The 20s trick link starts straight into the stare test.</p>
+        </div>
+      </section>
+
+      <footer class="drawer-footer">
+        <span>Space to pause · I for 20s trick · R to randomize · F for fullscreen · H to hide controls</span>
+      </footer>
+    </div>
+  </aside>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <noscript>
+    <div class="noscript-banner">Enable JavaScript to view the spiral.</div>
+  </noscript>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
